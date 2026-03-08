@@ -6,12 +6,13 @@
 
 with prices as (
     select
-        series_id,
         period,
-        gasoline_price,
         area_code,
-        area_name
+        max(area_name) as area_name,
+        avg(gasoline_price) as gasoline_price
     from {{ ref('stg_eia_prices') }}
+    where area_code is not null
+    group by period, area_code
 ),
 
 context as (
