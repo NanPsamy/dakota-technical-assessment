@@ -20,6 +20,8 @@ def _format_insights(insights: dict) -> list[str]:
         lines.append(
             f"Highest average price region: {insights['highest_area']} (${insights['highest_area_price']:.3f})"
         )
+    if insights.get("corr_wti") is not None:
+        lines.append(f"Correlation with WTI price: {insights['corr_wti']:.3f}")
     if insights.get("corr_demand") is not None:
         lines.append(f"Correlation with regional demand index: {insights['corr_demand']:.3f}")
     if insights.get("corr_volatility") is not None:
@@ -77,9 +79,9 @@ def run() -> Path:
 
     story.append(Paragraph("Visualizations", styles["Heading2"]))
     for label, key in [
-        ("Weekly Trend", "weekly_trend"),
+        ("Weekly Gasoline Price Trend", "weekly_trend"),
         ("Top Regions by Average Price", "top_areas"),
-        ("Gasoline vs Regional Demand Scatter", "scatter"),
+        ("Gasoline vs WTI Scatter", "scatter"),
     ]:
         story.append(Paragraph(label, styles["Heading3"]))
         image_path = report_dir / figure_paths[key]

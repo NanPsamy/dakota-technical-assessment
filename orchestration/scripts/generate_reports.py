@@ -36,8 +36,7 @@ def fetch_weekly_trend(cursor) -> list[tuple]:
     query = """
         select
             period,
-            avg(gasoline_price) as avg_gasoline_price,
-            avg(vehicle_miles_traveled_index) as avg_vehicle_miles_traveled_index
+            avg(gasoline_price) as avg_gasoline_price
         from marts.fact_gasoline_prices
         group by period
         order by period
@@ -54,6 +53,17 @@ def fetch_top_areas(cursor, limit: int = 10) -> list[tuple]:
         from marts.fact_gasoline_prices
         group by area_code, area_name
         order by avg_gasoline_price desc
+        limit %s
+    """
+    cursor.execute(query, (limit,))
+    return cursor.fetchall()
+
+
+def fetch_price_wti_points(cursor, limit: int = 2000) -> list[tuple]:
+    query = """
+        select gasoline_price, wti_crude_price_usd
+        from marts.fact_gasoline_prices
+        where gasoline_price is not null and wti_crude_price_usd is not null
         limit %s
     """
     cursor.execute(query, (limit,))
@@ -94,6 +104,7 @@ def fetch_insights(cursor) -> dict:
     cursor.execute(
         """
         select
+            corr(gasoline_price, wti_crude_price_usd) as corr_wti,
             corr(gasoline_price, regional_demand_index) as corr_demand,
             corr(gasoline_price, energy_volatility_index) as corr_volatility
         from marts.fact_gasoline_prices
@@ -102,8 +113,9 @@ def fetch_insights(cursor) -> dict:
     )
     corr_row = cursor.fetchone()
     if corr_row:
-        insights["corr_demand"] = float(corr_row[0]) if corr_row[0] is not None else None
-        insights["corr_volatility"] = float(corr_row[1]) if corr_row[1] is not None else None
+        insights["corr_wti"] = float(corr_row[0]) if corr_row[0] is not None else None
+        insights["corr_demand"] = float(corr_row[1]) if corr_row[1] is not None else None
+        insights["corr_volatility"] = float(corr_row[2]) if corr_row[2] is not None else None
 
     return insights
 
@@ -116,6 +128,7 @@ def fetch_report_data() -> dict:
             payload["row_counts"] = fetch_row_counts(cursor)
             payload["weekly_trend"] = fetch_weekly_trend(cursor)
             payload["top_areas"] = fetch_top_areas(cursor)
+            payload["scatter_points"] = fetch_price_wti_points(cursor)
             payload["insights"] = fetch_insights(cursor)
     return payload
 
@@ -133,26 +146,22 @@ def _plot_weekly_trend(data: list[tuple], out_path: Path) -> None:
 
     periods = [row[0] for row in data]
     gasoline = [float(row[1]) if row[1] is not None else None for row in data]
-    vmt = [float(row[2]) if row[2] is not None else 0.0 for row in data]
-
-    x = list(range(len(periods)))
-    width = 0.42
 
     plt.figure(figsize=(12, 5))
-    plt.bar([i - width / 2 for i in x], gasoline, width=width, label="Avg Gasoline Price")
-    plt.bar([i + width / 2 for i in x], vmt, width=width, label="Avg Vehicle Miles Traveled Index")
     tick_labels = [str(p) for p in periods]
     if len(tick_labels) > 12:
         step = max(1, len(tick_labels) // 12)
-        tick_positions = x[::step]
+        tick_positions = periods[::step]
         tick_text = tick_labels[::step]
     else:
-        tick_positions = x
+        tick_positions = periods
         tick_text = tick_labels
+    plt.plot(periods, gasoline, color="#2563eb", linewidth=2.2, marker="o", markersize=4, label="Avg Gasoline Price")
     plt.xticks(tick_positions, tick_text, rotation=45, ha="right")
-    plt.title("Weekly Trend: Gasoline Price vs Vehicle Miles Traveled Index")
+    plt.title("Weekly Trend: Average Gasoline Price")
     plt.xlabel("Period")
-    plt.ylabel("Value")
+    plt.ylabel("USD")
+    plt.grid(axis="y", alpha=0.25)
     plt.legend()
     plt.tight_layout()
     plt.savefig(out_path)
@@ -175,17 +184,36 @@ def _plot_top_areas(data: list[tuple], out_path: Path) -> None:
     plt.close()
 
 
+def _plot_wti_scatter(data: list[tuple], out_path: Path) -> None:
+    if not data:
+        return
+
+    gasoline = [float(row[0]) for row in data if row[0] is not None and row[1] is not None]
+    wti = [float(row[1]) for row in data if row[0] is not None and row[1] is not None]
+    if not gasoline or not wti:
+        return
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(wti, gasoline, alpha=0.35, s=12)
+    plt.title("Gasoline Price vs WTI Price")
+    plt.xlabel("WTI Crude Price (USD)")
+    plt.ylabel("Gasoline Price (USD)")
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
+
+
 def render_visualizations(data: dict) -> dict:
     report_dir, figures_dir = _ensure_dirs()
     paths = {
         "weekly_trend": figures_dir / "weekly_trend.png",
         "top_areas": figures_dir / "top_areas_avg_price.png",
-        "bar": figures_dir / "gasoline_vs_vehicle_miles_weekly_bar.png",
+        "scatter": figures_dir / "gasoline_vs_wti_scatter.png",
     }
 
     _plot_weekly_trend(data.get("weekly_trend", []), paths["weekly_trend"])
     _plot_top_areas(data.get("top_areas", []), paths["top_areas"])
-    _plot_weekly_trend(data.get("weekly_trend", []), paths["bar"])
+    _plot_wti_scatter(data.get("scatter_points", []), paths["scatter"])
 
     return {k: v.relative_to(report_dir) for k, v in paths.items()}
 
@@ -212,6 +240,7 @@ def write_report(data: dict, figure_paths: dict) -> Path:
     latest_avg_price = insights.get("latest_avg_price")
     highest_area = insights.get("highest_area")
     highest_area_price = insights.get("highest_area_price")
+    corr_wti = insights.get("corr_wti")
     corr_demand = insights.get("corr_demand")
     corr_volatility = insights.get("corr_volatility")
 
@@ -219,6 +248,8 @@ def write_report(data: dict, figure_paths: dict) -> Path:
         lines.append(f"- Latest period `{latest_period}` average gasoline price is **${latest_avg_price:.3f}**.")
     if highest_area and highest_area_price is not None:
         lines.append(f"- Highest average price region is **{highest_area}** at **${highest_area_price:.3f}**.")
+    if corr_wti is not None:
+        lines.append(f"- Correlation with WTI price: **{corr_wti:.3f}**.")
     if corr_demand is not None:
         lines.append(f"- Correlation with regional demand index: **{corr_demand:.3f}**.")
     if corr_volatility is not None:
@@ -237,14 +268,14 @@ def write_report(data: dict, figure_paths: dict) -> Path:
         "",
         "## Visualizations",
         "",
-        f"### Weekly Trend",
+        f"### Weekly Gasoline Price Trend",
         f"![Weekly Trend]({figure_paths['weekly_trend']})",
         "",
         f"### Top Regions by Average Price",
         f"![Top Areas]({figure_paths['top_areas']})",
         "",
-        f"### Weekly Gasoline vs Vehicle Miles Bar Chart",
-        f"![Gasoline vs Vehicle Miles]({figure_paths['bar']})",
+        f"### Gasoline vs WTI Scatter",
+        f"![Gasoline vs WTI]({figure_paths['scatter']})",
     ])
 
     report_path.write_text("\n".join(lines), encoding="utf-8")

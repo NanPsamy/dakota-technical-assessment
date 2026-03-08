@@ -64,6 +64,15 @@ Generate automated reports of your choice:
 
 See [reports/README.md](reports/README.md)
 
+## Documentation Index
+
+- System architecture and design: [`docs/architecture.md`](docs/architecture.md)
+- Technical decisions and rationale: [`docs/decisions.md`](docs/decisions.md)
+- Database ER diagram PNG: [`docs/er_diagram.png`](docs/er_diagram.png)
+- System-wide test strategy: [`tests/README.md`](tests/README.md)
+- Detailed system test cases: [`tests/system_test_cases.md`](tests/system_test_cases.md)
+- Quick smoke checklist: [`tests/smoke_test_checklist.md`](tests/smoke_test_checklist.md)
+
 ## Running The Project (Windows)
 
 The root `run.bat` script is the recommended entry point for setup and execution.
@@ -77,7 +86,7 @@ It is idempotent and supports:
 ### Prerequisites
 
 - Docker Desktop running
-- `docker-compose` available in `PATH`
+- `docker-compose` or `docker compose` available in `PATH`
 - Python 3.11+ available in `PATH`
 
 ### Basic Usage
@@ -124,8 +133,31 @@ run.bat
 
 If any step fails, the script:
 - writes error details to `logs/run.log`
-- captures `docker-compose logs` into the same log
+- captures Docker Compose logs into the same log
 - exits with code `1`
+
+## Unix/macOS Note
+
+This repository currently provides `run.bat` as the primary startup script for Windows.
+
+For Unix/macOS parity, use the same sequence manually from project root:
+
+```bash
+# setup/run core services
+docker compose build
+docker compose up -d postgres api orchestration
+
+# run ingestion
+docker compose up ingestion --abort-on-container-exit --exit-code-from ingestion
+
+# run dbt
+dbt run --project-dir dbt --profiles-dir dbt
+dbt test --project-dir dbt --profiles-dir dbt
+
+# generate reports
+python orchestration/scripts/generate_reports.py
+python orchestration/scripts/generate_pdf_report.py
+```
 
 ## Deliverables
 
@@ -175,7 +207,7 @@ Create these files explaining your work:
 **Create a script (e.g., `run.sh` for Unix/Mac or `run.bat` for Windows) that:**
 
 1. Sets up the environment (dependencies, `.env` file, builds containers)
-2. Starts all services via docker-compose
+2. Starts all services via Docker Compose
 3. Runs the pipeline end-to-end
 4. Generates reports
 5. Provides clear output/logging of what's happening

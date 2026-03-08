@@ -6,14 +6,14 @@ Transforms raw ingestion tables into analytics-ready models using a layered dbt 
 
 ### Architecture
 - `raw` schema is the source layer populated by ingestion.
-- `dbt_staging` schema contains cleaned, conformed models.
-- `dbt_marts` schema contains analytics and ML-ready models.
+- `staging` schema contains cleaned, conformed models.
+- `marts` schema contains analytics and ML-ready models.
 
 ### Model Flow
-- `raw.eia_prices` -> `dbt_staging.stg_eia_prices`
-- `dbt_staging.stg_eia_prices` + `raw.energy_market_context` -> `dbt_marts.fact_gasoline_prices`
-- `dbt_marts.fact_gasoline_prices` -> `dbt_marts.energy_market_summary`
-- `dbt_marts.fact_gasoline_prices` -> `dbt_marts.price_driver_features`
+- `raw.eia_prices` -> `staging.stg_eia_prices`
+- `staging.stg_eia_prices` + `raw.energy_market_context` -> `marts.fact_gasoline_prices`
+- `marts.fact_gasoline_prices` -> `marts.energy_market_summary`
+- `marts.fact_gasoline_prices` -> `marts.price_driver_features`
 
 ### Materialization Strategy
 - Staging and fact models are incremental with unique keys for efficient reruns.

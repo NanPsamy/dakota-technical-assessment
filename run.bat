@@ -14,6 +14,7 @@ set "STATE_DIR=logs\state"
 set "LOG_DIR=logs"
 set "LOG_FILE=%LOG_DIR%\run.log"
 set "FORCE_RUN=0"
+set "COMPOSE_CMD="
 
 if /I "%~1"=="--force" set "FORCE_RUN=1"
 
@@ -28,10 +29,22 @@ echo =====================================================
 echo [START] %date% %time%>>"%LOG_FILE%"
 
 where docker-compose >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] docker-compose not found in PATH.
-    echo [ERROR] docker-compose not found in PATH.>>"%LOG_FILE%"
-    exit /b 1
+if not errorlevel 1 (
+    set "COMPOSE_CMD=docker-compose"
+) else (
+    where docker >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Docker CLI not found in PATH.
+        echo [ERROR] Docker CLI not found in PATH.>>"%LOG_FILE%"
+        exit /b 1
+    )
+    docker compose version >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Neither docker-compose nor docker compose is available.
+        echo [ERROR] Neither docker-compose nor docker compose is available.>>"%LOG_FILE%"
+        exit /b 1
+    )
+    set "COMPOSE_CMD=docker compose"
 )
 
 where python >nul 2>&1
@@ -86,12 +99,12 @@ echo [OK] orchestration dependencies ready
 echo [4/8] Building containers (first-time only)...
 if "%FORCE_RUN%"=="1" (
     echo [RUN] Force mode enabled, rebuilding containers...
-    docker-compose build >>"%LOG_FILE%" 2>&1
+    %COMPOSE_CMD% build >>"%LOG_FILE%" 2>&1
     if errorlevel 1 goto error
     echo %date% %time%>"%STATE_DIR%\containers_built.ok"
 ) else (
     if not exist "%STATE_DIR%\containers_built.ok" (
-        docker-compose build >>"%LOG_FILE%" 2>&1
+        %COMPOSE_CMD% build >>"%LOG_FILE%" 2>&1
         if errorlevel 1 goto error
         echo %date% %time%>"%STATE_DIR%\containers_built.ok"
         echo [OK] Containers built
@@ -101,7 +114,7 @@ if "%FORCE_RUN%"=="1" (
 )
 
 echo [5/8] Starting core services...
-docker-compose up -d postgres api orchestration >>"%LOG_FILE%" 2>&1
+%COMPOSE_CMD% up -d postgres api orchestration >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto error
 
 echo [6/8] Waiting for service health...
@@ -109,7 +122,7 @@ set /a "MAX_ATTEMPTS=60"
 set /a "attempt=0"
 :wait_postgres
 set /a "attempt+=1"
-docker-compose ps postgres | findstr /I "healthy" >nul
+%COMPOSE_CMD% ps postgres | findstr /I "healthy" >nul
 if errorlevel 1 (
     if !attempt! GEQ !MAX_ATTEMPTS! (
         echo [ERROR] postgres did not become healthy in time.
@@ -123,7 +136,7 @@ if errorlevel 1 (
 set /a "attempt=0"
 :wait_api
 set /a "attempt+=1"
-docker-compose ps api | findstr /I "healthy" >nul
+%COMPOSE_CMD% ps api | findstr /I "healthy" >nul
 if errorlevel 1 (
     if !attempt! GEQ !MAX_ATTEMPTS! (
         echo [ERROR] api did not become healthy in time.
@@ -142,7 +155,7 @@ if "%FORCE_RUN%"=="0" if exist "%STATE_DIR%\pipeline_completed.ok" (
 )
 
 echo [RUN] Ingestion...
-docker-compose up ingestion --abort-on-container-exit --exit-code-from ingestion >>"%LOG_FILE%" 2>&1
+%COMPOSE_CMD% up ingestion --abort-on-container-exit --exit-code-from ingestion >>"%LOG_FILE%" 2>&1
 if errorlevel 1 goto error
 
 echo [RUN] dbt run...
@@ -173,6 +186,6 @@ exit /b 0
 :error
 echo [ERROR] Pipeline failed. Capturing service logs...
 echo [ERROR] Pipeline failed at %date% %time%>>"%LOG_FILE%"
-docker-compose logs >>"%LOG_FILE%" 2>&1
+%COMPOSE_CMD% logs >>"%LOG_FILE%" 2>&1
 echo [ERROR] See %LOG_FILE% for details.
 exit /b 1

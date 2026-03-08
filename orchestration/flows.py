@@ -57,7 +57,10 @@ def ensure_services_up() -> str:
 @task(retries=2, retry_delay_seconds=60)
 def run_daily_eia_ingestion() -> str:
     # Uses containerized ingestion which fetches EIA data + API enrichment.
-    return _run(f"{_compose_cmd()} up ingestion", cwd=ROOT)
+    return _run(
+        f"{_compose_cmd()} up ingestion --abort-on-container-exit --exit-code-from ingestion",
+        cwd=ROOT,
+    )
 
 
 @task(retries=2, retry_delay_seconds=60)

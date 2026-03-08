@@ -59,6 +59,8 @@ dbt/.user.yml
 # Reports (keep templates, ignore generated)
 reports/generated/*
 !reports/generated/.gitkeep
+reports/output/*
+!reports/output/.gitkeep
 
 # Orchestration logs and metadata
 orchestration/logs/

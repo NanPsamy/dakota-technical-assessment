@@ -1,5 +1,5 @@
 # sample profiles.yml for local development
-# For Docker: host should be 'postgres' (service name in docker-compose)
+# For Docker Compose: host should be 'postgres' (service name in compose file)
 # For local dev: host should be 'localhost'
 
 dakota_profile:

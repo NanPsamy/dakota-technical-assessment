@@ -24,7 +24,7 @@ All flows are implemented in `orchestration/flows.py`.
 
 - `daily-eia-ingestion-flow`
 	- Ensures `postgres` and `api` services are up.
-	- Runs `docker-compose up ingestion` to ingest EIA prices and enrichment.
+	- Runs `docker compose up ingestion --abort-on-container-exit --exit-code-from ingestion` to ingest EIA prices and enrichment.
 
 - `frequent-api-ingestion-flow`
 	- Ensures core services are up.
@@ -88,19 +88,19 @@ python flows.py
 Build and start only the orchestrator:
 
 ```bash
-docker-compose up -d orchestration
+docker compose up -d orchestration
 ```
 
 View orchestrator logs:
 
 ```bash
-docker-compose logs -f orchestration
+docker compose logs -f orchestration
 ```
 
 Stop orchestrator:
 
 ```bash
-docker-compose stop orchestration
+docker compose stop orchestration
 ```
 
 Notes:

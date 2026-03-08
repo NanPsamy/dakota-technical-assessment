@@ -9,7 +9,7 @@ Use **Prefect** as the orchestration framework for this pipeline.
 - Python-native orchestration fits an existing Python + dbt + Docker workflow.
 - Faster implementation and lower operational overhead than Airflow for this project size.
 - Built-in retries/scheduling and straightforward local execution for assessment/demo workflows.
-- Easy wrapping of existing shell commands (`docker-compose`, `dbt run`, `dbt test`).
+- Easy wrapping of existing shell commands (`docker compose`, `dbt run`, `dbt test`).
 
 ## Trade-offs
 
