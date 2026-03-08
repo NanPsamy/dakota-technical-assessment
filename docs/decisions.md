@@ -40,10 +40,17 @@ Use layered schemas: `raw`, `staging`, `marts` with strict constraints and keys.
 ### Key constraints
 - `raw.eia_prices`: unique `(series_id, period)` for conflict-safe upserts.
 - `raw.energy_market_context`: unique `(period, area_code)` for idempotent enrichment writes.
+- `marts.dim_area`: canonical `area_code` dimension with PK.
+- `marts.fact_gasoline_prices`: PK `(period, area_code)` and FK to `marts.dim_area(area_code)`.
+- `marts.energy_market_summary`: FK to `marts.dim_area(area_code)`.
+- `marts.price_driver_features`: FK `(period, area_code)` to fact grain and FK `area_code` to area dimension.
 - Staging/marts enforce required metrics and positive-range checks.
 
 ### Trade-off
 - More schema management complexity, but clearer data contracts and quality boundaries.
+
+### Documentation refinement
+- Split ER documentation into a structural entity view and a separate lineage map to avoid crossed relationship lines and improve review clarity.
 
 ## 4) dbt Transformations
 

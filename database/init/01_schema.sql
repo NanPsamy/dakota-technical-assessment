@@ -103,6 +103,16 @@ CREATE INDEX IF NOT EXISTS idx_stg_prices_period ON staging.stg_eia_prices (peri
 -- Final reporting and ML datasets
 -- =====================================================
 
+-- Area dimension for consistent area_code semantics across marts
+CREATE TABLE IF NOT EXISTS marts.dim_area (
+    area_code TEXT PRIMARY KEY,
+    area_name TEXT,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_dim_area_name ON marts.dim_area (area_name);
+
 -- Fact table joining price + enrichment features
 CREATE TABLE IF NOT EXISTS marts.fact_gasoline_prices (
     period DATE NOT NULL,
@@ -121,6 +131,11 @@ CREATE TABLE IF NOT EXISTS marts.fact_gasoline_prices (
     hurricane_risk_index NUMERIC(6,3),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (period, area_code),
+    CONSTRAINT fk_fact_area_code
+        FOREIGN KEY (area_code)
+        REFERENCES marts.dim_area (area_code)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
     CONSTRAINT chk_fact_price_positive CHECK (gasoline_price >= 0),
     CONSTRAINT chk_fact_rates_range CHECK (refinery_utilization_rate BETWEEN 0 AND 100)
 );
@@ -138,6 +153,11 @@ CREATE TABLE IF NOT EXISTS marts.energy_market_summary (
     avg_demand NUMERIC(6,3),
     avg_refinery_utilization NUMERIC(5,2),
     last_updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_summary_area_code
+        FOREIGN KEY (area_code)
+        REFERENCES marts.dim_area (area_code)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
     CONSTRAINT chk_summary_price_positive CHECK (avg_price >= 0 AND peak_price >= 0)
 );
 
@@ -156,7 +176,39 @@ CREATE TABLE IF NOT EXISTS marts.price_driver_features (
     energy_volatility_index NUMERIC(6,3),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (period, area_code),
+    CONSTRAINT fk_features_fact_grain
+        FOREIGN KEY (period, area_code)
+        REFERENCES marts.fact_gasoline_prices (period, area_code)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT fk_features_area_code
+        FOREIGN KEY (area_code)
+        REFERENCES marts.dim_area (area_code)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
     CONSTRAINT chk_features_price_positive CHECK (gasoline_price >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_features_period ON marts.price_driver_features (period);
+
+-- Keep area dimension synchronized when new fact rows arrive.
+CREATE OR REPLACE FUNCTION marts.sync_dim_area_from_fact()
+RETURNS trigger AS $$
+BEGIN
+    IF NEW.area_code IS NOT NULL THEN
+        INSERT INTO marts.dim_area (area_code, area_name, first_seen_at, last_seen_at)
+        VALUES (NEW.area_code, NEW.area_name, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (area_code)
+        DO UPDATE SET
+            area_name = COALESCE(EXCLUDED.area_name, marts.dim_area.area_name),
+            last_seen_at = CURRENT_TIMESTAMP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_dim_area_from_fact ON marts.fact_gasoline_prices;
+CREATE TRIGGER trg_sync_dim_area_from_fact
+BEFORE INSERT OR UPDATE OF area_code, area_name ON marts.fact_gasoline_prices
+FOR EACH ROW
+EXECUTE FUNCTION marts.sync_dim_area_from_fact();

@@ -63,6 +63,7 @@ The runtime topology is containerized with Docker Compose (`postgres`, `api`, `i
 3. **Transformation (dbt)**
    - `raw` -> `staging.stg_eia_prices` (cleaning, filtering null prices).
    - `staging + raw enrichment` -> `marts.fact_gasoline_prices`.
+   - `marts.dim_area` serves as canonical area dimension for marts referential integrity.
    - `fact` -> `marts.energy_market_summary` and `marts.price_driver_features`.
 
 4. **Data quality checks**
@@ -90,6 +91,7 @@ The runtime topology is containerized with Docker Compose (`postgres`, `api`, `i
 - Indexed keys on period/area/series support filtering and joins.
 - Incremental dbt models avoid full refresh costs for every run.
 - Composite keys (`series_id, period`; `period, area_code`) preserve idempotency.
+- Foreign keys enforce consistent `area_code` usage across marts and keep feature grain tied to fact grain.
 
 ### Data growth
 
@@ -108,3 +110,4 @@ The runtime topology is containerized with Docker Compose (`postgres`, `api`, `i
 
 - Database ER diagram markdown source: `database/documentation/er_diagram.md`
 - PNG export used for submission docs: `docs/er_diagram.png`
+- ER source includes separate entity and lineage views to keep relationships clear and non-overlapping.

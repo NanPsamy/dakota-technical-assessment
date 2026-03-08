@@ -1,14 +1,14 @@
 # Pipeline Health Report
 
-Generated at: 2026-03-08T15:49:39.736775+00:00
+Generated at: 2026-03-08T16:31:15.136028+00:00
 
 ## Executive Insights
 
 - Latest period `2026-03-02` average gasoline price is **$3.584**.
 - Highest average price region is **CALIFORNIA** at **$4.548**.
-- Correlation with WTI price: **-0.172**.
-- Correlation with regional demand index: **-0.075**.
-- Correlation with energy volatility index: **0.275**.
+- Correlation with WTI price: **0.020**.
+- Correlation with regional demand index: **0.169**.
+- Correlation with energy volatility index: **-0.162**.
 
 ## Row Counts
 

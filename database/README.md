@@ -31,6 +31,7 @@ Design and implement the database schema for the pipeline.
 - **Staging Schema**: Cleaned models built by dbt.
   - `stg_eia_prices`: Processed EIA prices with null `gasoline_price` records filtered out.
 - **Marts Schema**: Final reporting and ML datasets.
+  - `dim_area`: Canonical area dimension used for referential integrity across marts.
   - `fact_gasoline_prices`: Detailed fact table with enrichment.
   - `energy_market_summary`: Regional summaries.
   - `price_driver_features`: ML-ready features.
@@ -39,6 +40,8 @@ Design and implement the database schema for the pipeline.
 - `staging.stg_eia_prices` uses a composite primary key `(series_id, period)`; uniqueness is validated at this key level.
 - `gasoline_price` is modeled as required in staging and downstream marts (`fact_gasoline_prices`, `price_driver_features`).
 - Timestamp audit columns in marts (`created_at`, `last_updated`) are treated as required metadata columns.
+- `marts.dim_area` is the canonical key table for `area_code` and is referenced by marts FKs.
+- `marts.price_driver_features` enforces grain consistency with FK `(period, area_code)` to `marts.fact_gasoline_prices`.
 
 ### Time-Series Considerations
 - Used `DATE` for period fields (weekly granularity) to handle time zones implicitly.
@@ -48,4 +51,4 @@ Design and implement the database schema for the pipeline.
 
 ### Files
 - `init/01_schema.sql`: Database initialization script with layered schemas.
-- `documentation/er_diagram.md`: ER diagram and rationale.
+- `documentation/er_diagram.md`: Two-view diagram documentation (entity structure + clean lineage map) and rationale.
