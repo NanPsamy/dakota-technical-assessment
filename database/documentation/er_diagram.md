@@ -136,7 +136,7 @@ flowchart LR
     STGPR -->|aggregated into| FACT
     RCTX -->|enriched with| FACT
     FACT -->|summarized into| SUM
-    FACT -->|grain FK (period, area_code)| FEAT
+    FACT -->|grain FK: period + area_code| FEAT
 ```
 
 ## Design Rationale
