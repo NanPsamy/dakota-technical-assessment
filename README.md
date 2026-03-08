@@ -64,6 +64,69 @@ Generate automated reports of your choice:
 
 See [reports/README.md](reports/README.md)
 
+## Running The Project (Windows)
+
+The root `run.bat` script is the recommended entry point for setup and execution.
+
+It is idempotent and supports:
+- first-time setup
+- subsequent runs with skip logic
+- forced reruns
+- logging and error capture
+
+### Prerequisites
+
+- Docker Desktop running
+- `docker-compose` available in `PATH`
+- Python 3.11+ available in `PATH`
+
+### Basic Usage
+
+From the project root:
+
+```bat
+run.bat
+```
+
+### Scenario Guide
+
+1. First-time setup and full pipeline run:
+	 - Command: `run.bat`
+	 - Behavior:
+		 - creates `.env` from `.env.example` if missing
+		 - creates Python virtual environments for `dbt/` and `orchestration/` if needed
+		 - installs dependencies
+		 - builds containers
+		 - starts core services
+		 - runs ingestion, dbt run, dbt test, markdown report, and PDF report
+
+2. Subsequent run (fast path):
+	 - Command: `run.bat`
+	 - Behavior:
+		 - skips completed setup/build work
+		 - skips full pipeline rerun if already marked complete
+		 - still ensures services are running and healthy
+
+3. Force a complete rerun:
+	 - Command: `run.bat --force`
+	 - Behavior:
+		 - rebuilds containers
+		 - reruns the full end-to-end pipeline regardless of previous state
+
+### Logs and State
+
+- Main log file: `logs/run.log`
+- State markers:
+	- `logs/state/containers_built.ok`
+	- `logs/state/pipeline_completed.ok`
+
+### Failure Behavior
+
+If any step fails, the script:
+- writes error details to `logs/run.log`
+- captures `docker-compose logs` into the same log
+- exits with code `1`
+
 ## Deliverables
 
 ### Required Structure
