@@ -13,6 +13,7 @@ RUN uv pip compile pyproject.toml | uv pip install --system -r -
 
 # Copy application code
 COPY main.py .
+COPY models.py .
 
 EXPOSE 8000
 

@@ -27,6 +27,11 @@ The data you generate should enrich the source data in meaningful ways.
 - Managed with `uv` via `pyproject.toml`
 - Key packages: FastAPI, Uvicorn, Pydantic, Faker, Numpy
 
+### Files
+- `pyproject.toml`: uv dependency management
+- `models.py`: Pydantic data models
+- `main.py`: FastAPI application and endpoints
+
 ### Endpoints
 - `GET /`: Root endpoint
 - `GET /health`: Health check

@@ -38,19 +38,33 @@ services:
     networks:
       - dakota_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     restart: unless-stopped
 
-  # Add your other services here:
-  # - Ingestion service
-  # - Orchestrator (e.g., Prefect, Airflow)
-  # - dbt runner
-  # - Jupyter for reports
-  # etc.
+  # Data Ingestion Service
+  ingestion:
+    build: ./ingestion
+    container_name: dakota_ingestion
+    environment:
+      - EIA_API_KEY=bgYUdcNb4ZabkgPgMVFB0tbbahaf80nZygceUoYk
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=energy_analytics
+      - DB_USER=energy_user
+      - DB_PASSWORD=energy_password
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - dakota_network
+    restart: "no"  # Run once and exit
 
 networks:
   dakota_network:

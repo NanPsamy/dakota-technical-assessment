@@ -1,0 +1,18 @@
+# pyproject.toml for ingestion module using uv
+[project]
+name = "dakota-ingestion"
+version = "0.1.0"
+description = "Data ingestion service for EIA API and enrichment data"
+authors = [{name = "Dakota Analytics"}]
+dependencies = [
+    "requests>=2.31.0",
+    "psycopg2-binary>=2.9.7",
+    "tenacity>=8.2.3",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+]
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

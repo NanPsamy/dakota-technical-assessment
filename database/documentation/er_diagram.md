@@ -114,8 +114,8 @@ erDiagram
 - **Schemas**: Used `raw` for immutable source data, `staging` for cleaned dbt models, `marts` for final analytics and ML datasets to follow data warehouse best practices.
 - **Time-Series**: `period` is DATE for weekly data; indexed for fast range queries. Added constraints to prevent invalid data.
 - **Raw Tables**: Store ingested data as-is from EIA and enrichment APIs; includes audit timestamps.
-- **Staging Table**: Cleaned version of EIA prices, built by dbt.
+- **Staging Table**: Cleaned version of EIA prices, built by dbt; null `gasoline_price` rows are filtered before loading.
 - **Marts**: Fact table for detailed analytics, summary mart for regional overviews, features mart for ML.
-- **Constraints**: Check constraints for positive values and valid ranges to ensure data quality.
+- **Constraints**: Composite key `(series_id, period)` in staging preserves weekly snapshots, and price columns are validated/required for downstream marts.
 - **Indexes**: On period, area_code, series_id for performance; composite indexes where needed.
 - **Optimization**: Used BIGSERIAL for IDs, TEXT for flexible strings, NUMERIC for precise decimals.

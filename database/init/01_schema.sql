@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS raw.eia_prices (
     frequency TEXT,
     dataset TEXT DEFAULT 'petroleum/pri/gnd',
     ingestion_timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_value_positive CHECK (value >= 0)
+    CONSTRAINT uq_eia_prices_series_period UNIQUE (series_id, period)
 );
 
 -- Enrichment dataset for synthetic energy market context signals
@@ -62,12 +62,14 @@ CREATE TABLE IF NOT EXISTS raw.energy_market_context (
     geopolitical_risk_index NUMERIC(6,3),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_period_not_future CHECK (period <= CURRENT_DATE),
-    CONSTRAINT chk_rates_range CHECK (refinery_utilization_rate BETWEEN 0 AND 100)
+    CONSTRAINT chk_rates_range CHECK (refinery_utilization_rate BETWEEN 0 AND 100),
+    CONSTRAINT uq_energy_context_period_area UNIQUE (period, area_code)
 );
 
 -- Indexes for raw layer tables
 CREATE INDEX IF NOT EXISTS idx_raw_prices_period ON raw.eia_prices (period);
 CREATE INDEX IF NOT EXISTS idx_raw_prices_series ON raw.eia_prices (series_id);
+-- unique constraint already provides index on (series_id, period) so no separate index needed
 CREATE INDEX IF NOT EXISTS idx_raw_prices_area ON raw.eia_prices (area_code);
 CREATE INDEX IF NOT EXISTS idx_energy_context_period_area ON raw.energy_market_context (period, area_code);
 
@@ -79,7 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_energy_context_period_area ON raw.energy_market_c
 CREATE TABLE IF NOT EXISTS staging.stg_eia_prices (
     series_id TEXT NOT NULL,
     period DATE NOT NULL,
-    gasoline_price NUMERIC(10,4),
+    gasoline_price NUMERIC(10,4) NOT NULL,
     area_code TEXT,
     area_name TEXT,
     product_code TEXT,
@@ -89,6 +91,7 @@ CREATE TABLE IF NOT EXISTS staging.stg_eia_prices (
     unit TEXT,
     frequency TEXT,
     processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    -- Composite key supports weekly snapshots per series_id.
     PRIMARY KEY (series_id, period),
     CONSTRAINT chk_gasoline_price_positive CHECK (gasoline_price >= 0)
 );
@@ -105,7 +108,7 @@ CREATE TABLE IF NOT EXISTS marts.fact_gasoline_prices (
     period DATE NOT NULL,
     area_code TEXT NOT NULL,
     area_name TEXT,
-    gasoline_price NUMERIC(10,4),
+    gasoline_price NUMERIC(10,4) NOT NULL,
     wti_crude_price_usd NUMERIC(10,2),
     brent_crude_price_usd NUMERIC(10,2),
     crude_spread NUMERIC(8,2),
@@ -116,7 +119,7 @@ CREATE TABLE IF NOT EXISTS marts.fact_gasoline_prices (
     avg_temperature_c NUMERIC(5,2),
     energy_volatility_index NUMERIC(6,3),
     hurricane_risk_index NUMERIC(6,3),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (period, area_code),
     CONSTRAINT chk_fact_price_positive CHECK (gasoline_price >= 0),
     CONSTRAINT chk_fact_rates_range CHECK (refinery_utilization_rate BETWEEN 0 AND 100)
@@ -129,12 +132,12 @@ CREATE INDEX IF NOT EXISTS idx_fact_prices_area ON marts.fact_gasoline_prices (a
 CREATE TABLE IF NOT EXISTS marts.energy_market_summary (
     area_code TEXT PRIMARY KEY,
     area_name TEXT,
-    avg_price NUMERIC(10,4),
+    avg_price NUMERIC(10,4) NOT NULL,
     peak_price NUMERIC(10,4),
     avg_crude_price NUMERIC(10,2),
     avg_demand NUMERIC(6,3),
     avg_refinery_utilization NUMERIC(5,2),
-    last_updated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_summary_price_positive CHECK (avg_price >= 0 AND peak_price >= 0)
 );
 
@@ -142,7 +145,7 @@ CREATE TABLE IF NOT EXISTS marts.energy_market_summary (
 CREATE TABLE IF NOT EXISTS marts.price_driver_features (
     period DATE NOT NULL,
     area_code TEXT NOT NULL,
-    gasoline_price NUMERIC(10,4),
+    gasoline_price NUMERIC(10,4) NOT NULL,
     wti_crude_price_usd NUMERIC(10,2),
     refinery_utilization_rate NUMERIC(5,2),
     gasoline_inventory_million_barrels NUMERIC(10,2),
@@ -151,7 +154,7 @@ CREATE TABLE IF NOT EXISTS marts.price_driver_features (
     avg_temperature_c NUMERIC(5,2),
     hurricane_risk_index NUMERIC(6,3),
     energy_volatility_index NUMERIC(6,3),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (period, area_code),
     CONSTRAINT chk_features_price_positive CHECK (gasoline_price >= 0)
 );

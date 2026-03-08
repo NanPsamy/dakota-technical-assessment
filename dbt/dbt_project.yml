@@ -1,0 +1,20 @@
+name: 'dakota'
+version: '1.0'
+config-version: 2
+
+profile: 'dakota_profile'
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  dakota:
+    staging:
+      +materialized: incremental
+      +unique_key: ['series_id', 'period']
+      +schema: staging
+    marts:
+      +materialized: incremental
+      +unique_key: ['period', 'area_code']
+      +schema: marts

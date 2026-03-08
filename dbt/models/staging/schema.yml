@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: stg_eia_prices
+    description: "Cleans and standardizes raw EIA price records."
+    columns:
+      - name: series_id
+        tests:
+          - not_null
+      - name: period
+        tests:
+          - not_null
+      - name: gasoline_price
+        tests:
+          - not_null

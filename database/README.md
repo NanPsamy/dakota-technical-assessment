@@ -29,11 +29,16 @@ Design and implement the database schema for the pipeline.
   - `eia_prices`: Weekly petroleum prices with detailed metadata.
   - `energy_market_context`: Synthetic enrichment data with market signals.
 - **Staging Schema**: Cleaned models built by dbt.
-  - `stg_eia_prices`: Processed EIA prices.
+  - `stg_eia_prices`: Processed EIA prices with null `gasoline_price` records filtered out.
 - **Marts Schema**: Final reporting and ML datasets.
   - `fact_gasoline_prices`: Detailed fact table with enrichment.
   - `energy_market_summary`: Regional summaries.
   - `price_driver_features`: ML-ready features.
+
+### Data Quality Alignment (dbt + Database)
+- `staging.stg_eia_prices` uses a composite primary key `(series_id, period)`; uniqueness is validated at this key level.
+- `gasoline_price` is modeled as required in staging and downstream marts (`fact_gasoline_prices`, `price_driver_features`).
+- Timestamp audit columns in marts (`created_at`, `last_updated`) are treated as required metadata columns.
 
 ### Time-Series Considerations
 - Used `DATE` for period fields (weekly granularity) to handle time zones implicitly.

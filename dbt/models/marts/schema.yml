@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: fact_gasoline_prices
+    description: "Analytics mart combining prices with enrichment context."
+    columns:
+      - name: period
+        tests:
+          - not_null
+      - name: area_code
+        tests:
+          - not_null
+      - name: gasoline_price
+        tests:
+          - not_null
+      - name: created_at
+        tests:
+          - not_null
+
+  - name: energy_market_summary
+    description: "Regional summary analytics aggregating prices and market indicators by area."
+    columns:
+      - name: area_code
+        tests:
+          - not_null
+          - unique
+      - name: avg_price
+        tests:
+          - not_null
+      - name: last_updated
+        tests:
+          - not_null
+
+  - name: price_driver_features
+    description: "ML feature table with key drivers influencing gasoline prices."
+    columns:
+      - name: period
+        tests:
+          - not_null
+      - name: area_code
+        tests:
+          - not_null
+      - name: gasoline_price
+        tests:
+          - not_null
+      - name: created_at
+        tests:
+          - not_null
